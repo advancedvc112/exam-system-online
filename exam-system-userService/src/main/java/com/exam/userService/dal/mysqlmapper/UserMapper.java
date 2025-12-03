@@ -1,9 +1,7 @@
 package com.exam.userService.dal.mysqlmapper;
 
 import com.exam.userService.dal.dataobject.UserDO;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
 
 /**
  * 用户Mapper接口
@@ -27,5 +25,14 @@ public interface UserMapper {
     @Select("SELECT id, username, password, role, status, create_time, update_time " +
             "FROM user WHERE id = #{id}")
     UserDO selectById(@Param("id") Long id);
+
+    /**
+     * 插入新用户
+     * @param user 用户实体
+     */
+    @Insert("INSERT INTO user (username, password, role, status) " +
+            "VALUES (#{username}, #{password}, #{role}, #{status})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    void insert(UserDO user);
 }
 

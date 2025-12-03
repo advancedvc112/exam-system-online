@@ -1,7 +1,9 @@
 package com.exam.excute.service;
 
 import com.exam.excute.dal.dataobject.AnswerRecordDO;
+import com.exam.excute.dal.dataobject.ExamRecordDO;
 import com.exam.excute.dal.mysqlmapper.AnswerRecordMapper;
+import com.exam.excute.dal.mysqlmapper.ExamRecordMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -19,6 +21,9 @@ public class ExamSyncService {
     private AnswerRecordMapper answerRecordMapper;
 
     @Autowired
+    private ExamRecordMapper examRecordMapper;
+
+    @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
     @Autowired
@@ -27,6 +32,25 @@ public class ExamSyncService {
     // Redis key前缀
     private static final String ANSWER_KEY_PREFIX = "exam:answer:";
     private static final String PROGRESS_KEY_PREFIX = "exam:progress:";
+
+    /**
+     * 学生开始一场考试：如果已有记录则直接返回，否则创建新的考试记录
+     */
+    public Long startExam(Long examId, Long studentId, Long paperId) {
+        // 如果已经有记录，直接复用（防止重复开始）
+        ExamRecordDO existing = examRecordMapper.selectByExamIdAndStudentId(examId, studentId);
+        if (existing != null) {
+            return existing.getId();
+        }
+
+        ExamRecordDO record = new ExamRecordDO();
+        record.setExamId(examId);
+        record.setStudentId(studentId);
+        record.setPaperId(paperId);
+        record.setStatus("in_progress");
+        examRecordMapper.insert(record);
+        return record.getId();
+    }
 
     /**
      * 实时保存答案（先存Redis，异步同步到数据库）
@@ -65,18 +89,22 @@ public class ExamSyncService {
      */
     public void updateProgress(Long examRecordId) {
         String key = PROGRESS_KEY_PREFIX + examRecordId;
-        
-        // 从数据库查询已答题数量（简化处理，实际可以从Redis统计）
-        // 这里使用Redis存储进度，实际应该从数据库查询
-        Long answeredCount = (Long) redisTemplate.opsForValue().get(key);
-        if (answeredCount == null) {
+
+        // 从Redis读取当前进度，兼容 Integer / Long 两种存储类型
+        Object raw = redisTemplate.opsForValue().get(key);
+        long answeredCount;
+        if (raw instanceof Long) {
+            answeredCount = (Long) raw;
+        } else if (raw instanceof Integer) {
+            answeredCount = ((Integer) raw).longValue();
+        } else {
             answeredCount = 0L;
         }
         answeredCount = answeredCount + 1;
-        
+
         // 保存进度到Redis
         redisTemplate.opsForValue().set(key, answeredCount, 2, TimeUnit.HOURS);
-        
+
         // 通过WebSocket推送进度更新
         messagingTemplate.convertAndSend("/topic/exam/progress/" + examRecordId, answeredCount);
     }
@@ -86,8 +114,13 @@ public class ExamSyncService {
      */
     public Long getProgress(Long examRecordId) {
         String key = PROGRESS_KEY_PREFIX + examRecordId;
-        Long progress = (Long) redisTemplate.opsForValue().get(key);
-        return progress != null ? progress : 0L;
+        Object raw = redisTemplate.opsForValue().get(key);
+        if (raw instanceof Long) {
+            return (Long) raw;
+        } else if (raw instanceof Integer) {
+            return ((Integer) raw).longValue();
+        }
+        return 0L;
     }
 
     /**

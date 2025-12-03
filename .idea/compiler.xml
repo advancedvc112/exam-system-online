@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="exam-system-execute" />
+        <module name="exam-system-manage" />
+        <module name="exam-system-userService" />
+        <module name="exam-system-highConcurrency-disposal" />
+        <module name="exam-system-analyse" />
+        <module name="exam-system-server" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="exam-system-execute" options="-parameters" />
+      <module name="exam-system-manage" options="-parameters" />
+      <module name="exam-system-server" options="-parameters" />
+      <module name="exam-system-userService" options="-parameters" />
+    </option>
+  </component>
+</project>

@@ -66,7 +66,13 @@ public class AntiCheatService {
      */
     public boolean isHeartbeatTimeout(Long examRecordId, Long studentId) {
         String key = HEARTBEAT_KEY_PREFIX + examRecordId + ":" + studentId;
-        Long lastHeartbeat = (Long) redisTemplate.opsForValue().get(key);
+        Object raw = redisTemplate.opsForValue().get(key);
+        Long lastHeartbeat = null;
+        if (raw instanceof Long) {
+            lastHeartbeat = (Long) raw;
+        } else if (raw instanceof Integer) {
+            lastHeartbeat = ((Integer) raw).longValue();
+        }
         if (lastHeartbeat == null) {
             return true;
         }
@@ -86,7 +92,13 @@ public class AntiCheatService {
      */
     public void recordFocus(Long examRecordId, Long studentId) {
         String key = FOCUS_KEY_PREFIX + examRecordId + ":" + studentId;
-        Long blurTime = (Long) redisTemplate.opsForValue().get(key);
+        Object raw = redisTemplate.opsForValue().get(key);
+        Long blurTime = null;
+        if (raw instanceof Long) {
+            blurTime = (Long) raw;
+        } else if (raw instanceof Integer) {
+            blurTime = ((Integer) raw).longValue();
+        }
         if (blurTime != null) {
             long blurDuration = System.currentTimeMillis() - blurTime;
             // 如果失焦时间超过阈值，记录为切屏

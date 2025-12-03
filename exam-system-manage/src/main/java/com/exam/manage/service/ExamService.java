@@ -203,7 +203,10 @@ public class ExamService {
     }
 
     /**
-     * 更新考试状态（根据时间）
+     * 单场考试的状态切换（管理员/老师手工操作：“开启/结束考试”）
+     * - not_started -> in_progress：立即开启考试（不再依赖开始时间）
+     * - in_progress -> finished：手动结束考试
+     * 其他状态不做处理
      */
     @Transactional
     public void updateExamStatus(Long id) {
@@ -212,8 +215,15 @@ public class ExamService {
             return;
         }
 
-        String newStatus = determineExamStatus(exam.getStartTime(), exam.getEndTime());
-        if (!newStatus.equals(exam.getStatus())) {
+        String currentStatus = exam.getStatus();
+        String newStatus = null;
+        if ("not_started".equals(currentStatus)) {
+            newStatus = "in_progress";
+        } else if ("in_progress".equals(currentStatus)) {
+            newStatus = "finished";
+        }
+
+        if (newStatus != null && !newStatus.equals(currentStatus)) {
             examMapper.updateStatus(id, newStatus);
         }
     }
