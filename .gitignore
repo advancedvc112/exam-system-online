@@ -1,0 +1,7 @@
+# 项目排除路径
+/exam-system-analyse/target/
+/exam-system-execute/target/
+/exam-system-highConcurrency-disposal/target/
+/exam-system-manage/target/
+/exam-system-server/target/
+/exam-system-userService/target/
