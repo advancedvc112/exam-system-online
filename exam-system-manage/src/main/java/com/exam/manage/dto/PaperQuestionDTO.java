@@ -21,5 +21,10 @@ public class PaperQuestionDTO {
      * 分值
      */
     private Integer score;
+
+    /**
+     * 题目详情（返回给前端用）
+     */
+    private QuestionDTO question;
 }
 

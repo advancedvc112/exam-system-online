@@ -95,18 +95,28 @@ public class PaperService {
         }
         paperQuestionMapper.batchInsert(paperQuestionList);
 
-        // 5. 构建返回结果
+        // 5. 构建返回结果（包含题目详情，方便前端直接展示）
         PaperDTO paperDTO = new PaperDTO();
         BeanUtils.copyProperties(paperDO, paperDTO);
-        paperDTO.setQuestions(paperQuestionList.stream()
-            .map(pq -> {
-                PaperQuestionDTO dto = new PaperQuestionDTO();
-                dto.setQuestionId(pq.getQuestionId());
-                dto.setOrderNum(pq.getOrderNum());
-                dto.setScore(pq.getScore());
-                return dto;
-            })
-            .collect(Collectors.toList()));
+
+        List<PaperQuestionDTO> questionDTOList = new ArrayList<>();
+        for (PaperQuestionDO paperQuestion : paperQuestionList) {
+            PaperQuestionDTO dto = new PaperQuestionDTO();
+            dto.setQuestionId(paperQuestion.getQuestionId());
+            dto.setOrderNum(paperQuestion.getOrderNum());
+            dto.setScore(paperQuestion.getScore());
+
+            // 查询题目详情并封装
+            QuestionDO questionDO = questionMapper.selectById(paperQuestion.getQuestionId());
+            if (questionDO != null) {
+                QuestionDTO questionDTO = new QuestionDTO();
+                BeanUtils.copyProperties(questionDO, questionDTO);
+                dto.setQuestion(questionDTO);
+            }
+
+            questionDTOList.add(dto);
+        }
+        paperDTO.setQuestions(questionDTOList);
 
         return paperDTO;
     }
@@ -173,15 +183,24 @@ public class PaperService {
 
         PaperDTO paperDTO = new PaperDTO();
         BeanUtils.copyProperties(paperDO, paperDTO);
-        paperDTO.setQuestions(paperQuestionList.stream()
-            .map(pq -> {
-                PaperQuestionDTO dto = new PaperQuestionDTO();
-                dto.setQuestionId(pq.getQuestionId());
-                dto.setOrderNum(pq.getOrderNum());
-                dto.setScore(pq.getScore());
-                return dto;
-            })
-            .collect(Collectors.toList()));
+
+        List<PaperQuestionDTO> questionDTOList = new ArrayList<>();
+        for (PaperQuestionDO paperQuestion : paperQuestionList) {
+            PaperQuestionDTO dto = new PaperQuestionDTO();
+            dto.setQuestionId(paperQuestion.getQuestionId());
+            dto.setOrderNum(paperQuestion.getOrderNum());
+            dto.setScore(paperQuestion.getScore());
+
+            QuestionDO questionDO = questionMapper.selectById(paperQuestion.getQuestionId());
+            if (questionDO != null) {
+                QuestionDTO questionDTO = new QuestionDTO();
+                BeanUtils.copyProperties(questionDO, questionDTO);
+                dto.setQuestion(questionDTO);
+            }
+
+            questionDTOList.add(dto);
+        }
+        paperDTO.setQuestions(questionDTOList);
 
         return paperDTO;
     }
