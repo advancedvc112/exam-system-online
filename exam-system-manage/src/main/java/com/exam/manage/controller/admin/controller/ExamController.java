@@ -75,14 +75,22 @@ public class ExamController {
     }
 
     /**
-     * 更新单个考试状态
+     * 更新单个考试状态（开启/结束考试）
+     * 如果开启了考试，会返回考试令牌
      */
     @PutMapping("/{id}/status")
     public Result<Object> updateExamStatus(@PathVariable Long id, HttpServletRequest request) {
         // 只有管理员或教师可以手动更新考试状态（视为“开启/结束考试”等操作）
         authUtil.checkAdminOrTeacher(request);
-        examService.updateExamStatus(id);
-        return Result.success("状态更新成功");
+        String token = examService.updateExamStatus(id);
+        
+        if (token != null) {
+            // 开启了考试，返回令牌
+            return Result.success("考试已开启，令牌已生成", token);
+        } else {
+            // 结束了考试或其他操作
+            return Result.success("状态更新成功");
+        }
     }
 
     /**

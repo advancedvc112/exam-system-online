@@ -28,6 +28,12 @@ public class ExamService {
     @Autowired
     private PaperMapper paperMapper;
 
+    @Autowired
+    private ExamTokenUtil examTokenUtil;
+
+    @Autowired
+    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
+
     /**
      * 创建考试安排
      */
@@ -207,12 +213,13 @@ public class ExamService {
      * - not_started -> in_progress：立即开启考试（不再依赖开始时间）
      * - in_progress -> finished：手动结束考试
      * 其他状态不做处理
+     * @return 如果开启了考试，返回考试令牌；否则返回null
      */
     @Transactional
-    public void updateExamStatus(Long id) {
+    public String updateExamStatus(Long id) {
         ExamDO exam = examMapper.selectById(id);
         if (exam == null) {
-            return;
+            return null;
         }
 
         String currentStatus = exam.getStatus();
@@ -225,21 +232,61 @@ public class ExamService {
 
         if (newStatus != null && !newStatus.equals(currentStatus)) {
             examMapper.updateStatus(id, newStatus);
+            
+            // 当考试状态变为 in_progress 时，签发考试令牌
+            if ("in_progress".equals(newStatus)) {
+                String token = examTokenUtil.issueToken(id, exam.getEndTime());
+                // 令牌已存储到Redis，学生可以通过 /exam-online/execute/token/{examId} 获取
+                return token;
+            }
         }
+        return null;
     }
 
     /**
      * 批量更新考试状态（用于定时任务）
+     * 当考试状态变为 finished 时，触发批量提交处理
+     * 当考试状态变为 in_progress 时，生成考试令牌
      */
     @Transactional
     public void batchUpdateExamStatus() {
         List<ExamDO> exams = examMapper.selectExamsNeedStatusUpdate();
         for (ExamDO exam : exams) {
+            String currentStatus = exam.getStatus();
             String newStatus = determineExamStatus(exam.getStartTime(), exam.getEndTime());
-            if (!newStatus.equals(exam.getStatus())) {
+            if (!newStatus.equals(currentStatus)) {
                 examMapper.updateStatus(exam.getId(), newStatus);
+                
+                // 当考试状态从 not_started 变为 in_progress 时，签发考试令牌
+                if ("not_started".equals(currentStatus) && "in_progress".equals(newStatus)) {
+                    examTokenUtil.issueToken(exam.getId(), exam.getEndTime());
+                }
+                
+                // 当考试状态从 in_progress 变为 finished 时，触发批量提交处理
+                if ("in_progress".equals(currentStatus) && "finished".equals(newStatus)) {
+                    // 通知执行模块处理考试时间耗尽的批量提交
+                    // 这里使用 Redis 发布订阅或直接调用服务
+                    // 为了解耦，使用 Redis Set 标记需要处理的考试
+                    // 实际处理由 ExamSubmitScheduler 定时任务执行
+                    handleExamTimeout(exam.getId());
+                }
             }
         }
+    }
+
+    /**
+     * 处理考试时间耗尽（将考试加入待处理队列）
+     * @param examId 考试ID
+     */
+    private void handleExamTimeout(Long examId) {
+        // 使用 Redis Set 标记需要处理的考试
+        // 实际处理由 ExamSubmitScheduler 定时任务执行
+        // 这里通过 Redis 通知执行模块，避免跨模块直接依赖
+        
+        // 将考试ID加入待处理队列（执行模块的定时任务会处理）
+        // Key: exam:timeout:exams (Set)
+        redisTemplate.opsForSet().add("exam:timeout:exams", examId.toString());
+        redisTemplate.expire("exam:timeout:exams", 24, java.util.concurrent.TimeUnit.HOURS);
     }
 
     /**

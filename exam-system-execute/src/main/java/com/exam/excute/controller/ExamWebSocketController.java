@@ -67,14 +67,20 @@ public class ExamWebSocketController {
 
     /**
      * 处理答案保存
+     * payload 需要包含：examRecordId, questionId, studentAnswer, examToken
      */
     @MessageMapping("/exam/answer")
     public void handleAnswer(@Payload Map<String, Object> payload) {
         Long examRecordId = Long.valueOf(payload.get("examRecordId").toString());
         Long questionId = Long.valueOf(payload.get("questionId").toString());
         String studentAnswer = payload.get("studentAnswer").toString();
+        String examToken = payload.get("examToken") != null ? payload.get("examToken").toString() : null;
         
-        examSyncService.saveAnswerRealtime(examRecordId, questionId, studentAnswer);
+        if (examToken == null || examToken.trim().isEmpty()) {
+            throw new RuntimeException("考试令牌不能为空");
+        }
+        
+        examSyncService.saveAnswerRealtime(examRecordId, questionId, studentAnswer, examToken);
     }
 }
 

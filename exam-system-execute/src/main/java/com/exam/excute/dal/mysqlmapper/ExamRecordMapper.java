@@ -50,5 +50,12 @@ public interface ExamRecordMapper {
      */
     @Update("UPDATE exam_record SET is_cheating = 1, cheating_reason = #{reason}, update_time = NOW() WHERE id = #{id}")
     int markCheating(@Param("id") Long id, @Param("reason") String reason);
+
+    /**
+     * 根据考试ID查询所有进行中的考试记录
+     */
+    @Select("SELECT id, exam_id, student_id, paper_id, start_time, submit_time, total_score, score, status, switch_count, is_cheating, cheating_reason, create_time, update_time " +
+            "FROM exam_record WHERE exam_id = #{examId} AND status = 'in_progress'")
+    java.util.List<ExamRecordDO> selectInProgressByExamId(@Param("examId") Long examId);
 }
 
